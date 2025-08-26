@@ -1,46 +1,68 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
-import { useRoadmap } from '../../context/RoadmapContext';
-import { RoadmapItem } from '../../types';
+import { X, Trash2 } from 'lucide-react';
+import { SmartDropdown } from '../forms/SmartDropdown';
+import { useSupabaseData } from '../../hooks/useSupabaseData';
+import { ItemCronograma } from '../../types/database';
 
 interface ItemFormProps {
-  item?: RoadmapItem | null;
+  item?: ItemCronograma | null;
   onClose: () => void;
 }
 
 export function ItemForm({ item, onClose }: ItemFormProps) {
-  const { addItem, updateItem } = useRoadmap();
+  const { areas, times, addArea, addTime, addItem, updateItem } = useSupabaseData();
   const [formData, setFormData] = useState({
     nome: item?.nome || '',
-    area: item?.area || 'Engenharia' as const,
-    time: item?.time || '',
-    dataInicio: item?.dataInicio || '',
-    dataTermino: item?.dataTermino || '',
+    area_id: item?.area_id || '',
+    time_id: item?.time_id || '',
+    data_inicio: item?.data_inicio || '',
+    data_termino: item?.data_termino || '',
     progresso: item?.progresso || 0,
     status: item?.status || 'A fazer' as const,
     comentarios: item?.comentarios || '',
     links: item?.links || [''],
-    fonte: item?.fonte || 'Manual',
-    swimlane: item?.swimlane || ''
+    fonte: item?.fonte || 'Manual'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const itemData = {
-      ...formData,
-      links: formData.links.filter(link => link.trim() !== ''),
-      isManualEdit: true,
-      swimlane: undefined // Remove swimlane personalizada
-    };
-
-    if (item) {
-      updateItem(item.id, itemData);
-    } else {
-      addItem(itemData);
+    if (!formData.area_id || !formData.time_id) {
+      alert('Por favor, selecione uma área responsável e um time/squad.');
+      return;
     }
-    
-    onClose();
+
+    setIsSubmitting(true);
+    try {
+      const itemData = {
+        nome: formData.nome,
+        area_id: formData.area_id,
+        time_id: formData.time_id,
+        data_inicio: formData.data_inicio,
+        data_termino: formData.data_termino,
+        progresso: formData.progresso,
+        status: formData.status,
+        comentarios: formData.comentarios,
+        links: formData.links.filter(link => link.trim() !== ''),
+        fonte: formData.fonte,
+        is_manual_edit: true
+      };
+
+      if (item) {
+        await updateItem(item.id, itemData);
+      } else {
+        await addItem(itemData);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar item:', error);
+      alert('Erro ao salvar item. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLinkChange = (index: number, value: string) => {
@@ -56,6 +78,16 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
   const removeLink = (index: number) => {
     const newLinks = formData.links.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, links: newLinks }));
+  };
+
+  const handleAddArea = async (nome: string) => {
+    const newAreaId = await addArea(nome);
+    setFormData(prev => ({ ...prev, area_id: newAreaId }));
+  };
+
+  const handleAddTime = async (nome: string) => {
+    const newTimeId = await addTime(nome);
+    setFormData(prev => ({ ...prev, time_id: newTimeId }));
   };
 
   return (
@@ -88,47 +120,25 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Área Responsável *
-              </label>
-              <select
-                required
-                value={formData.area}
-                onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value as any }))}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="Engenharia">Engenharia</option>
-                <option value="Produto">Produto</option>
-                <option value="Infraestrutura">Infraestrutura</option>
-              </select>
-            </div>
+            <SmartDropdown
+              label="Área Responsável"
+              value={formData.area_id}
+              onChange={(value) => setFormData(prev => ({ ...prev, area_id: value }))}
+              options={areas}
+              onAddNew={handleAddArea}
+              placeholder="Selecione uma área"
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time/Squad *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.time}
-                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Swimlane Personalizada
-              </label>
-              <input
-                type="text"
-                value={formData.swimlane}
-                onChange={(e) => setFormData(prev => ({ ...prev, swimlane: e.target.value }))}
-                placeholder="Ex: Iniciativas Estratégicas Q1"
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+            <SmartDropdown
+              label="Time/Squad"
+              value={formData.time_id}
+              onChange={(value) => setFormData(prev => ({ ...prev, time_id: value }))}
+              options={times}
+              onAddNew={handleAddTime}
+              placeholder="Selecione um time"
+              required
+            />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -137,8 +147,8 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
               <input
                 type="date"
                 required
-                value={formData.dataInicio}
-                onChange={(e) => setFormData(prev => ({ ...prev, dataInicio: e.target.value }))}
+                value={formData.data_inicio}
+                onChange={(e) => setFormData(prev => ({ ...prev, data_inicio: e.target.value }))}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -150,8 +160,8 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
               <input
                 type="date"
                 required
-                value={formData.dataTermino}
-                onChange={(e) => setFormData(prev => ({ ...prev, dataTermino: e.target.value }))}
+                value={formData.data_termino}
+                onChange={(e) => setFormData(prev => ({ ...prev, data_termino: e.target.value }))}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -225,9 +235,9 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
               <button
                 type="button"
                 onClick={addLink}
-                className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                className="flex items-center text-sm text-blue-600 hover:text-blue-800 mt-2"
               >
-                <Plus className="h-4 w-4 mr-1" />
+                + 
                 Adicionar Link
               </button>
             </div>
@@ -256,9 +266,17 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={isSubmitting}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
-              {item ? 'Atualizar' : 'Criar'}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                item ? 'Atualizar' : 'Criar'
+              )}
             </button>
           </div>
         </form>
