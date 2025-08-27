@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Settings, FileText } from 'lucide-react';
 import { SmartDropdown } from '../forms/SmartDropdown';
+import { JiraSearchField } from '../forms/JiraSearchField';
 import { useSupabaseData } from '../../hooks/useSupabaseData';
+import { useJiraIntegration } from '../../hooks/useJiraIntegration';
 import { ItemCronograma } from '../../types/database';
+import { JiraIssue } from '../../types/jira';
 
 interface ItemFormProps {
   item?: ItemCronograma | null;
@@ -11,6 +14,9 @@ interface ItemFormProps {
 
 export function ItemForm({ item, onClose }: ItemFormProps) {
   const { areas, times, addArea, addTime, addItem, updateItem } = useSupabaseData();
+  const { config: jiraConfig } = useJiraIntegration();
+  
+  const [sourceType, setSourceType] = useState<'manual' | 'jira'>('manual');
   const [formData, setFormData] = useState({
     nome: item?.nome || '',
     area_id: item?.area_id || '',
@@ -25,7 +31,33 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedJiraIssue, setSelectedJiraIssue] = useState<JiraIssue | null>(null);
 
+  // Função para preencher dados do JIRA
+  const handleJiraIssueSelect = (issue: JiraIssue) => {
+    setSelectedJiraIssue(issue);
+    setFormData(prev => ({
+      ...prev,
+      nome: issue.summary,
+      data_inicio: issue.start_date || '',
+      data_termino: issue.due_date || '',
+      progresso: issue.progress,
+      status: mapJiraStatusToLocal(issue.status),
+      fonte: `JIRA - ${issue.issue_id}`
+    }));
+  };
+
+  // Mapear status do JIRA para status local
+  const mapJiraStatusToLocal = (jiraStatus: string): 'A fazer' | 'Em andamento' | 'Concluído' => {
+    const statusLower = jiraStatus.toLowerCase();
+    if (statusLower.includes('concluído') || statusLower.includes('done') || statusLower.includes('fechado')) {
+      return 'Concluído';
+    }
+    if (statusLower.includes('andamento') || statusLower.includes('progress') || statusLower.includes('desenvolvimento')) {
+      return 'Em andamento';
+    }
+    return 'A fazer';
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -106,20 +138,86 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Seletor de Fonte - apenas para novos itens */}
+          {!item && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome da Entrega *
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Fonte do Item
               </label>
-              <input
-                type="text"
-                required
-                value={formData.nome}
-                onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setSourceType('manual')}
+                  className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                    sourceType === 'manual'
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceType('jira')}
+                  disabled={!jiraConfig}
+                  className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                    sourceType === 'jira'
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  } ${!jiraConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  JIRA
+                </button>
+              </div>
+              {!jiraConfig && (
+                <p className="mt-2 text-sm text-gray-500">
+                  Configure a integração JIRA na seção "Integrações" para usar esta opção
+                </p>
+              )}
             </div>
+          )}
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Campo Nome - condicional baseado na fonte */}
+            {sourceType === 'manual' || item ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Entrega *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.nome}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            ) : (
+              <div className="md:col-span-2">
+                <JiraSearchField
+                  value={formData.nome}
+                  onChange={(value) => setFormData(prev => ({ ...prev, nome: value }))}
+                  onSelectIssue={handleJiraIssueSelect}
+                />
+              </div>
+            )}
+
+            {/* Mostrar informações do item JIRA selecionado */}
+            {selectedJiraIssue && sourceType === 'jira' && (
+              <div className="md:col-span-2 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Settings className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">
+                    Item JIRA Selecionado: {selectedJiraIssue.issue_id}
+                  </span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Os campos abaixo foram preenchidos automaticamente, mas você pode editá-los conforme necessário.
+                </p>
+              </div>
+            )}
             <SmartDropdown
               label="Área Responsável"
               value={formData.area_id}
