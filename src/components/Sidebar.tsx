@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Calendar, BarChart3, Bell } from 'lucide-react';
+import { Database, Calendar, BarChart3, Bell, Settings } from 'lucide-react';
 import { useRoadmap } from '../context/RoadmapContext';
 
 export function Sidebar() {
@@ -9,6 +9,7 @@ export function Sidebar() {
     { id: 'database', name: 'Base de Dados', icon: Database },
     { id: 'timeline', name: 'Cronograma', icon: Calendar },
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
+    { id: 'integrations', name: 'Integrações', icon: Settings },
   ];
 
   const unreadAlerts = alerts.length;

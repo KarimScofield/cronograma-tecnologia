@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { DatabaseView } from './components/database/DatabaseView';
 import { TimelineView } from './components/timeline/TimelineView';
 import { DashboardView } from './components/dashboard/DashboardView';
+import { IntegrationsView } from './components/integrations/IntegrationsView';
 import { useRoadmap } from './context/RoadmapContext';
 
 function AppContent() {
@@ -17,6 +18,8 @@ function AppContent() {
         return <TimelineView />;
       case 'dashboard':
         return <DashboardView />;
+      case 'integrations':
+        return <IntegrationsView />;
       default:
         return <TimelineView />;
     }

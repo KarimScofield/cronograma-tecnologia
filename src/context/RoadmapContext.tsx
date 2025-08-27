@@ -7,8 +7,8 @@ interface RoadmapContextType {
   milestones: Milestone[];
   alerts: NotificationAlert[];
   filters: FilterOptions;
-  currentView: 'database' | 'timeline' | 'dashboard';
-  setCurrentView: (view: 'database' | 'timeline' | 'dashboard') => void;
+  currentView: 'database' | 'timeline' | 'dashboard' | 'integrations';
+  setCurrentView: (view: 'database' | 'timeline' | 'dashboard' | 'integrations') => void;
   addItem: (item: Omit<RoadmapItem, 'id'>) => void;
   updateItem: (id: string, updates: Partial<RoadmapItem>) => void;
   deleteItem: (id: string) => void;
@@ -25,7 +25,7 @@ export function RoadmapProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<RoadmapItem[]>(mockRoadmapItems);
   const [milestones, setMilestones] = useState<Milestone[]>(mockMilestones);
   const [alerts, setAlerts] = useState<NotificationAlert[]>(mockAlerts);
-  const [currentView, setCurrentView] = useState<'database' | 'timeline' | 'dashboard'>('timeline');
+  const [currentView, setCurrentView] = useState<'database' | 'timeline' | 'dashboard' | 'integrations'>('timeline');
   const [filters, setFilters] = useState<FilterOptions>({
     areas: [],
     times: [],

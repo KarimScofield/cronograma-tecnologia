@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, ExternalLink, Calendar, Users, Target } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Calendar, Users, Target, RefreshCw } from 'lucide-react';
 import { useRoadmap } from '../../context/RoadmapContext';
+import { useJiraIntegration } from '../../hooks/useJiraIntegration';
 import { RoadmapItem } from '../../types';
 import { FilterPanel } from '../filters/FilterPanel';
 import { ItemForm } from './ItemForm';
 
 export function DatabaseView() {
   const { filteredItems, deleteItem } = useRoadmap();
+  const { syncWithJira, syncing } = useJiraIntegration();
   const [editingItem, setEditingItem] = useState<RoadmapItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const getAreaColor = (area: string) => {
     switch (area) {
@@ -38,6 +41,14 @@ export function DatabaseView() {
     setShowForm(false);
   };
 
+  const handleSyncJira = async () => {
+    const result = await syncWithJira();
+    setSyncResult(result.message);
+    
+    // Limpar mensagem após 5 segundos
+    setTimeout(() => setSyncResult(null), 5000);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -52,7 +63,22 @@ export function DatabaseView() {
           <Plus className="h-4 w-4 mr-2" />
           Novo Item
         </button>
+        <button
+          onClick={handleSyncJira}
+          disabled={syncing}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Sincronizando...' : 'Sincronizar com JIRA'}
+        </button>
       </div>
+
+      {/* Resultado da Sincronização */}
+      {syncResult && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <p className="text-sm text-blue-800">{syncResult}</p>
+        </div>
+      )}
 
       <FilterPanel />
 
