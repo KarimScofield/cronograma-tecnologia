@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, ExternalLink, Calendar, Users, Target, RefreshCw } from 'lucide-react';
-import { useRoadmap } from '../../context/RoadmapContext';
+import { useSupabaseData } from '../../hooks/useSupabaseData';
 import { useJiraIntegration } from '../../hooks/useJiraIntegration';
-import { RoadmapItem } from '../../types';
+import { ItemCronograma } from '../../types/database';
 import { FilterPanel } from '../filters/FilterPanel';
 import { ItemForm } from './ItemForm';
 
 export function DatabaseView() {
-  const { filteredItems, deleteItem } = useRoadmap();
-  const { syncWithJira, syncing } = useJiraIntegration();
-  const [editingItem, setEditingItem] = useState<RoadmapItem | null>(null);
+  const { items, deleteItem } = useSupabaseData();
+  const { syncWithJira, syncing, config: jiraConfig } = useJiraIntegration();
+  const [editingItem, setEditingItem] = useState<ItemCronograma | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
@@ -31,7 +31,7 @@ export function DatabaseView() {
     }
   };
 
-  const handleEdit = (item: RoadmapItem) => {
+  const handleEdit = (item: ItemCronograma) => {
     setEditingItem(item);
     setShowForm(true);
   };
@@ -47,6 +47,12 @@ export function DatabaseView() {
     
     // Limpar mensagem após 5 segundos
     setTimeout(() => setSyncResult(null), 5000);
+  };
+
+  // Função para gerar link do JIRA
+  const getJiraLink = (item: ItemCronograma) => {
+    if (!item.jira_issue_id_fk || !jiraConfig) return null;
+    return `${jiraConfig.jira_url}/browse/${item.jira_issue_id_fk}`;
   };
 
   return (
@@ -111,7 +117,7 @@ export function DatabaseView() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredItems.map((item) => (
+              {items.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
@@ -133,12 +139,12 @@ export function DatabaseView() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getAreaColor(item.area)} mb-1`}>
-                        {item.area}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getAreaColor(item.areas_responsaveis?.nome || 'Outros')} mb-1`}>
+                        {item.areas_responsaveis?.nome || 'Não definida'}
                       </span>
                       <div className="flex items-center text-sm text-gray-600">
                         <Users className="h-4 w-4 mr-1" />
-                        {item.time}
+                        {item.times_squads?.nome || 'Não definido'}
                       </div>
                     </div>
                   </td>
@@ -146,11 +152,11 @@ export function DatabaseView() {
                     <div className="flex flex-col">
                       <div className="flex items-center mb-1">
                         <Calendar className="h-4 w-4 text-gray-400 mr-1" />
-                        <span>{new Date(item.dataInicio).toLocaleDateString('pt-BR')}</span>
+                        <span>{new Date(item.data_inicio).toLocaleDateString('pt-BR')}</span>
                       </div>
                       <div className="flex items-center">
                         <Target className="h-4 w-4 text-gray-400 mr-1" />
-                        <span>{new Date(item.dataTermino).toLocaleDateString('pt-BR')}</span>
+                        <span>{new Date(item.data_termino).toLocaleDateString('pt-BR')}</span>
                       </div>
                     </div>
                   </td>
@@ -174,8 +180,20 @@ export function DatabaseView() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="flex flex-col">
-                      <span>{item.fonte}</span>
-                      {item.isManualEdit && (
+                      {item.jira_issue_id_fk && jiraConfig ? (
+                        <a
+                          href={getJiraLink(item)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 flex items-center"
+                        >
+                          {item.fonte}
+                          <ExternalLink className="h-3 w-3 ml-1" />
+                        </a>
+                      ) : (
+                        <span>{item.fonte}</span>
+                      )}
+                      {item.is_manual_edit && (
                         <span className="text-xs text-blue-600 mt-1">✓ Editado manualmente</span>
                       )}
                     </div>

@@ -25,6 +25,7 @@ export interface ItemCronograma {
   links: string[];
   fonte: string;
   is_manual_edit: boolean;
+  jira_issue_id_fk: string | null;
   created_at: string;
   updated_at: string;
   // Relacionamentos

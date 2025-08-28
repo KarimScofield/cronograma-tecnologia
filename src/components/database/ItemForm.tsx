@@ -27,7 +27,8 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
     status: item?.status || 'A fazer' as const,
     comentarios: item?.comentarios || '',
     links: item?.links || [''],
-    fonte: item?.fonte || 'Manual'
+    fonte: item?.fonte || 'Manual',
+    jira_issue_id_fk: item?.jira_issue_id_fk || null
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +44,8 @@ export function ItemForm({ item, onClose }: ItemFormProps) {
       data_termino: issue.due_date || '',
       progresso: issue.progress,
       status: mapJiraStatusToLocal(issue.status),
-      fonte: `JIRA - ${issue.issue_id}`
+      fonte: `JIRA - ${issue.issue_id}`,
+      jira_issue_id_fk: issue.issue_id
     }));
   };
 
