@@ -15,9 +15,9 @@ export function useJiraIntegration() {
       const { data, error } = await supabase
         .from('configuracao_jira')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error) {
         throw error;
       }
 
